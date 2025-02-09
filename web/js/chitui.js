@@ -393,3 +393,27 @@ function fileTransferProgress() {
     new bootstrap.Tooltip(tooltipTriggerEl)
   })
 })()
+
+$(document).ready(function() {
+  $('#formAddPrinter').on('submit', function(event) {
+    event.preventDefault();
+    var ip = $('#printerIp').val();
+    $.ajax({
+      url: '/add_printer',
+      type: 'POST',
+      data: { ip: ip },
+      success: function(response) {
+        if (response.success) {
+          alert('Printer added successfully!');
+          // Optionally, refresh the printer list
+          socket.emit("printers", "{}");
+        } else {
+          alert('Failed to add printer: ' + response.error);
+        }
+      },
+      error: function(xhr, status, error) {
+        alert('Error: ' + error);
+      }
+    });
+  });
+});

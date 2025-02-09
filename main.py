@@ -1,4 +1,4 @@
-from flask import Flask, Response, request, stream_with_context
+from flask import Flask, Response, request, stream_with_context, jsonify
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from threading import Thread
@@ -297,6 +297,45 @@ def ws_msg_handler(ws, msg):
         logger.warning("--- UNKNOWN MESSAGE ---")
         logger.warning(data)
         logger.warning("--- UNKNOWN MESSAGE ---")
+
+
+def discover_printer_by_ip(ip):
+    logger.info(f"Starting printer discovery for IP: {ip}")
+    msg = b'M99999'
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)  # UDP
+    sock.settimeout(discovery_timeout)
+    sock.sendto(msg, (ip, 3000))
+    try:
+        data = sock.recv(8192)
+        printer = save_discovered_printer(data)
+        logger.info(f"Discovery done for IP: {ip}")
+        return printer
+    except TimeoutError:
+        logger.error(f"Discovery timeout for IP: {ip}")
+        return None
+    finally:
+        sock.close()
+
+# Example usage:
+# printer = discover_printer_by_ip('192.168.1.100')
+# if printer:
+#     connect_printers({printer['connection']: printer})
+#     socketio.emit('printers', printers)
+
+
+@app.route('/add_printer', methods=['POST'])
+def add_printer():
+    ip = request.form.get('ip')
+    if not ip:
+        return jsonify({'error': 'IP address is required'}), 400
+
+    printer = discover_printer_by_ip(ip)
+    if printer:
+        connect_printers(printer)
+        socketio.emit('printers', printers)
+        return jsonify({'success': True, 'printer': printer})
+    else:
+        return jsonify({'error': 'Printer discovery failed'}), 500
 
 
 def main():
