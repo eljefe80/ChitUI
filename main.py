@@ -26,6 +26,8 @@ port = 54780
 if os.environ.get("PORT") is not None:
     port = os.environ.get("PORT")
 
+printer_ip = os.environ.get("PRINTER_IP", "")
+
 discovery_timeout = 1
 app = Flask(__name__,
             static_url_path='',
@@ -339,7 +341,10 @@ def add_printer():
 
 
 def main():
-    printers = discover_printers()
+    if printer_ip == "":
+      printers = discover_printers()
+    else:
+      printers = discover_printer_by_ip(printer_ip)
     if printers:
         connect_printers(printers)
         socketio.emit('printers', printers)
